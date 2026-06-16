@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    @apply bg-gray-950 text-white font-sans;
+  }
+
+  * {
+    @apply box-border;
+  }
+}
+
+@layer utilities {
+  .bg-white\/2 {
+    background-color: rgba(255, 255, 255, 0.02);
+  }
+}
+
+/* Recharts text override */
+.recharts-text {
+  font-family: 'Inter', system-ui, sans-serif;
+}
