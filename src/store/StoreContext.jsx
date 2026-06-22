@@ -269,7 +269,7 @@ export function StoreProvider({ children }) {
         else if (kind === 'train') updateLive({ train: 'idle' })
         else if (kind === 'fidelity') updateLive({ fid: 'idle', fidPct: 0, fidStep: '', fidError: errMsg })
         else if (kind === 'generate') updateLive({ gen: 'idle', genPct: 0, genPhase: '' })
-        else if (kind === 'feasibility') updateLive({ feas: 'idle', feasPct: 0, feasStep: '' })
+        else if (kind === 'feasibility') updateLive({ feas: 'idle', feasPct: 0, feasStep: '', feasError: errMsg })
       }
     }
 
@@ -318,8 +318,10 @@ export function StoreProvider({ children }) {
 
     const startFeas = (id) => {
       if (!LIVE) return
-      updateLive({ feas: 'running', feasPct: 0 })
-      post(`/api/runs/${id}/feasibility/start`, {}).catch(() => {})
+      const fe = (dbRef.current.runs[id] && dbRef.current.runs[id].pipe.feasData) || {}
+      updateLive({ feas: 'running', feasPct: 0, feasStep: 'Starting feasibility study…', feasError: '' })
+      post(`/api/runs/${id}/feasibility/start`, { real: fe.real || null, test: fe.test || null })
+        .catch((e) => updateLive({ feas: 'idle', feasError: String(e.message || e) }))
       liveStream(id, (ev) => onStageEvent(id, 'feasibility', ev))
     }
     const cancelFeas = () => liveCancel({ feas: 'idle', feasPct: 0, feasStep: '' })

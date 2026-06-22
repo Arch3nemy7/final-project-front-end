@@ -45,6 +45,8 @@ export function defaultPipe() {
     fidDone: false, feasDone: false,
     // real-crop datasets used by the Fidelity FID sweep (per class)
     fidData: { gn: '', gp: '', num: '10000' },
+    // real train/test splits used by the Feasibility F1 study (synth = this run's gen/)
+    feasData: { real: '', test: '' },
   }
 }
 
@@ -60,7 +62,7 @@ export function freshLive() {
     sampleGN: null, sampleGP: null,
     gen: 'idle', genPct: 0, genPhase: '',
     fid: 'idle', fidPct: 0, fidStep: '', fidError: '',   // Fidelity = per-checkpoint FID sweep
-    feas: 'idle', feasPct: 0, feasStep: '', genFilter: 'all',
+    feas: 'idle', feasPct: 0, feasStep: '', feasError: '', genFilter: 'all',
   }
 }
 
