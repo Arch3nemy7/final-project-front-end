@@ -1,10 +1,50 @@
 import { useStore } from '../../store/StoreContext.jsx'
 import { resultsOf } from '../../lib/results.js'
 import F1Chart from '../charts/F1Chart.jsx'
+import LineChart from '../charts/LineChart.jsx'
 import { IconAlertTriangle } from '../icons.jsx'
 import { Eyebrow, H1, Lead, JobBar, RerunButton } from './parts.jsx'
 
 const COLS = '1.4fr 1fr 1fr 1fr 1fr'
+
+// Scenario colours/labels shared with F1Chart's legend (kept consistent).
+const SCEN_COLORS = ['#1f3a8a', '#2f6bd8', '#6aa0e0', '#9ab8e0']
+const SCEN_LABELS = ['I · 100/0', 'II · 75/25', 'III · 50/50', 'IV · 25/75']
+
+// Per-epoch training-loss curves: one chart per architecture, four scenario lines.
+function LossSection({ losses, archs }) {
+  let maxY = 0, maxE = 0
+  losses.forEach((arch) => arch.forEach((cv) => {
+    maxE = Math.max(maxE, cv.length)
+    cv.forEach((v) => { if (v != null) maxY = Math.max(maxY, v) })
+  }))
+  const yMax = Math.max(0.1, Math.ceil(maxY * 11) / 10)   // +10% headroom, 0.1 grid
+  const xMax = Math.max(1, maxE)
+  const xTicks = Array.from({ length: maxE }, (_, i) => i + 1)
+  return (
+    <div style={{ background: '#fff', border: '1px solid #e6e9f0', borderRadius: 14, padding: '18px 20px', marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 6 }}>
+        <div style={{ fontWeight: 600, fontSize: 14 }}>Training loss per epoch</div>
+        <div style={{ display: 'flex', gap: 13, fontSize: 11, fontFamily: "'IBM Plex Mono',monospace", flexWrap: 'wrap' }}>
+          {SCEN_LABELS.map((L, i) => (<span key={i} style={{ color: SCEN_COLORS[i] }}>● {L}</span>))}
+        </div>
+      </div>
+      <div style={{ fontSize: 12, color: '#8a94a4', marginBottom: 14 }}>
+        Mean cross-entropy loss over the training set per epoch, for each architecture under the four real/synthetic compositions.
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        {losses.map((arch, gi) => (
+          <div key={gi}>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: '#16202e', marginBottom: 4 }}>{archs[gi] || ('Model ' + (gi + 1))}</div>
+            <LineChart w={360} h={170} xMax={xMax} xTicks={xTicks} yMax={yMax} yMin={0} yLabel="loss  (x: epoch)"
+              series={arch.map((cv, si) => ({ points: cv.map((y, i) => (y == null ? null : { x: i + 1, y })).filter(Boolean), color: SCEN_COLORS[si] }))}
+              yFmt={(v) => v.toFixed(2)} />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 function buildRows(C, archs, data) {
   return data.map((rowVals, gi) => {
@@ -120,6 +160,8 @@ export default function FeasibilityStage({ run, C }) {
             <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 12 }}>Macro-F1 by architecture &amp; scenario</div>
             <F1Chart rows={R.feasRows} archs={R.feasArchs} />
           </div>
+
+          {R.feasLosses.length > 0 && <LossSection losses={R.feasLosses} archs={R.feasArchs} />}
 
           <div style={{ background: '#f8fafc', border: '1px solid #e6e9f0', borderRadius: 12, padding: '16px 20px', display: 'flex', gap: 13, alignItems: 'flex-start' }}>
             <span style={{ color: '#b9831a', flex: 'none', marginTop: 1 }}><IconAlertTriangle size={20} /></span>

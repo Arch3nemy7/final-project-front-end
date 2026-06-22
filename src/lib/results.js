@@ -43,6 +43,8 @@ export function resultsOf(run) {
     // feasibility F1 table
     feasRows: feas.rows && feas.rows.length ? feas.rows : [],
     feasArchs: feas.archs && feas.archs.length ? feas.archs : F1_ARCHS,
+    // per-epoch training loss curves: losses[archIndex][scenarioIndex] = [loss per epoch]
+    feasLosses: feas.losses && feas.losses.length ? feas.losses : [],
     top: feas.top || null, topF1: feas.topF1 != null ? feas.topF1 : null,
     // generated gallery (array of {src,cls}) — null when nothing generated yet
     gallery: gen.gallery && gen.gallery.length ? gen.gallery : null,
