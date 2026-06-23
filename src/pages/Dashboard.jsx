@@ -48,7 +48,7 @@ export default function Dashboard() {
           {recent.map((id) => {
             const r = db.runs[id], p = r.pipe, st = statusOf(p, C)
             const dc = p.done.filter(Boolean).length
-            const pct = Math.round((dc / 6) * 100) + '%'
+            const pct = Math.round((dc / p.done.length) * 100) + '%'
             return (
               <div key={id} className="gs-row" onClick={() => navigate('/run/' + id)} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '15px 20px', borderBottom: '1px solid #f2f4f8', cursor: 'pointer' }}>
                 <span style={{ flex: 'none', width: 9, height: 9, borderRadius: '50%', background: st.dot }} />
@@ -58,7 +58,7 @@ export default function Dashboard() {
                 </div>
                 <div style={{ flex: 'none', width: 120 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: "'IBM Plex Mono',monospace", fontSize: 10.5, color: '#8a94a4', marginBottom: 4 }}>
-                    <span>{dc} / 6</span><span>{pct}</span>
+                    <span>{dc} / {p.done.length}</span><span>{pct}</span>
                   </div>
                   <div style={{ height: 6, borderRadius: 4, background: '#eef1f6', overflow: 'hidden' }}>
                     <div style={{ height: '100%', borderRadius: 4, background: '#2563c9', width: pct }} />

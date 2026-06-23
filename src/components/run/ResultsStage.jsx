@@ -46,7 +46,7 @@ export default function ResultsStage({ run, C }) {
 
   return (
     <div>
-      <Eyebrow>STEP 06 · RESULTS</Eyebrow>
+      <Eyebrow>STEP 05 · RESULTS</Eyebrow>
       <H1>Run summary &amp; findings</H1>
       <Lead maxWidth={680}>Everything from this pipeline run, in one place.</Lead>
 

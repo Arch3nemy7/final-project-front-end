@@ -11,9 +11,8 @@ export const STAGES = [
   { num: '01', title: 'Format' },
   { num: '02', title: 'Train' },
   { num: '03', title: 'Fidelity' },
-  { num: '04', title: 'Generate' },
-  { num: '05', title: 'Feasibility' },
-  { num: '06', title: 'Results' },
+  { num: '04', title: 'Feasibility' },
+  { num: '05', title: 'Results' },
 ]
 
 export const ACCENT_OPTIONS = ['#2563c9', '#0e7490', '#6d4bd1', '#1f8a5b', '#b4530a']
@@ -32,14 +31,14 @@ export function palette(accent) {
 export function defaultCfg() {
   return {
     cfg: 'auto', res: '256', ticks: '1000', snap: '50', batch: '32', gpus: '1', aug: 'ada',
-    target: '0.6', resume: 'ffhq256', augpipe: 'bgc', gamma: '', metrics: 'fid50k_full',
+    target: '0.6', resume: 'ffhq256', augpipe: 'bgc', gamma: '', metrics: 'none',
     seed: '0', mirror: false, subset: '', freezed: '0', fp32: false, tf32: false, workers: '3',
   }
 }
 
 export function defaultPipe() {
   return {
-    stage: 0, done: [false, false, false, false, false, false],
+    stage: 0, done: [false, false, false, false, false],
     posFile: null, negFile: null, fmtDone: false, cfg: defaultCfg(),
     gnDone: false, gpDone: false, generated: false, genN: '5000',
     fidDone: false, feasDone: false,
@@ -95,8 +94,11 @@ export function loadDb() {
           const r = db.runs[id]
           if (r && r.pipe) {
             const p = r.pipe
-            if (p.done && p.done.length > 6) p.done = p.done.slice(1)
-            if (typeof p.stage === 'number' && p.stage > 5) p.stage = 5
+            // migrate older 6-stage runs (…Fidelity/Generate/Feasibility…) to the
+            // 5-stage flow by dropping the Generate stage at index 3.
+            if (p.done && p.done.length === 6) p.done = p.done.slice(0, 3).concat(p.done.slice(4))
+            if (p.done && p.done.length > 5) p.done = p.done.slice(0, 5)
+            if (typeof p.stage === 'number' && p.stage > 4) p.stage = 4
             if (p.cfg && !p.cfg.res) p.cfg.res = '256'
           }
         })

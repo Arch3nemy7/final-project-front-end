@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useStore } from '../../store/StoreContext.jsx'
 import { resultsOf, pctBelow, FID_BENCH } from '../../lib/results.js'
 import { toTick, toTickCurve, fidYMax } from '../../lib/format.js'
@@ -36,9 +37,14 @@ export default function FidelityStage({ run, C }) {
   const total = parseInt(p.cfg.ticks, 10) || 1000
   const fd = p.fidData || { gn: '', gp: '', num: '5000' }
   const setFd = (k, v) => patchPipe(run.id, { fidData: { ...fd, [k]: v } })
+  // The dataset carries over from the Format step; the manual paths are an
+  // optional override, hidden by default (or shown if one was already set).
+  const [showOverride, setShowOverride] = useState(!!(fd.gn || fd.gp))
 
-  const gnCurve = live.fidGN.length ? live.fidGN : R.curveGN
-  const gpCurve = live.fidGP.length ? live.fidGP : R.curveGP
+  // While a fresh sweep is running, show only its live points — don't fall back
+  // to the training/seeded curve (that's what made results "appear" instantly).
+  const gnCurve = live.fidGN.length ? live.fidGN : (fidRunning ? [] : R.curveGN)
+  const gpCurve = live.fidGP.length ? live.fidGP : (fidRunning ? [] : R.curveGP)
   // Per-checkpoint previews reuse the training snapshot grids — the FID test
   // itself generates nothing (it samples the generator internally).
   const gnSamples = live.trainSamplesGN.length ? live.trainSamplesGN : R.trainSamplesGN
@@ -67,18 +73,28 @@ export default function FidelityStage({ run, C }) {
       {/* config (shown when idle) */}
       {!fidRunning && !fidDone && (
         <div style={{ background: '#fff', border: '1px solid #e6e9f0', borderRadius: 14, padding: '20px 22px' }}>
-          <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 3 }}>Real datasets to score against</div>
-          <div style={{ fontSize: 12, color: '#8a94a4', marginBottom: 16 }}>Folder or .zip of the real crops each generator was trained on, at the model's resolution (e.g. 256²). Leave blank to use this run's formatted dataset.</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <label style={{ display: 'block' }}>
-              <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: C.negInk, marginBottom: 6 }}>Gram-negative real crops</span>
-              <input value={fd.gn} onChange={(e) => setFd('gn', e.target.value)} placeholder="D:\…\gram_negative" style={fieldStyle} />
-            </label>
-            <label style={{ display: 'block' }}>
-              <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: C.posInk, marginBottom: 6 }}>Gram-positive real crops</span>
-              <input value={fd.gp} onChange={(e) => setFd('gp', e.target.value)} placeholder="D:\…\gram_positive" style={fieldStyle} />
-            </label>
+          <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 3 }}>Real dataset to score against</div>
+          <div style={{ fontSize: 12.5, color: '#5b6677', marginBottom: 14 }}>
+            Uses the dataset from the <strong>Format</strong> step automatically — you don't need to enter it again.
           </div>
+          <div onClick={() => setShowOverride((v) => !v)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, color: '#2563c9' }}>
+            <span style={{ fontFamily: "'IBM Plex Mono',monospace" }}>{showOverride ? '▾' : '▸'}</span> Score against a different dataset (optional)
+          </div>
+          {showOverride && (
+            <div style={{ marginTop: 14 }}>
+              <div style={{ fontSize: 12, color: '#8a94a4', marginBottom: 12 }}>Folder or .zip of real crops at the model's resolution (e.g. 256²). Leave blank to keep using the Format dataset.</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <label style={{ display: 'block' }}>
+                  <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: C.negInk, marginBottom: 6 }}>Gram-negative real crops</span>
+                  <input value={fd.gn} onChange={(e) => setFd('gn', e.target.value)} placeholder="D:\…\gram_negative" style={fieldStyle} />
+                </label>
+                <label style={{ display: 'block' }}>
+                  <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: C.posInk, marginBottom: 6 }}>Gram-positive real crops</span>
+                  <input value={fd.gp} onChange={(e) => setFd('gp', e.target.value)} placeholder="D:\…\gram_positive" style={fieldStyle} />
+                </label>
+              </div>
+            </div>
+          )}
           <div style={{ fontSize: 12.5, color: '#8a94a4', marginTop: 16 }}>
             Click <strong>Run fidelity test</strong> below to score every checkpoint at <span style={{ fontFamily: "'IBM Plex Mono',monospace" }}>fid50k_full</span>. Each checkpoint generates 50,000 images, so this is slow on a small GPU — results stream in per checkpoint and the best-so-far updates live, so you can cancel once it has converged.
           </div>
@@ -126,7 +142,7 @@ export default function FidelityStage({ run, C }) {
           <div style={{ background: '#e6f5ee', border: '1px solid #b7e2cd', borderRadius: 12, padding: '16px 20px', display: 'flex', gap: 13, alignItems: 'flex-start' }}>
             <span style={{ color: '#16916a', flex: 'none', marginTop: 1 }}><IconCheckCircle size={20} /></span>
             <div style={{ fontSize: 13.5, color: '#0f5f45', lineHeight: 1.55 }}>
-              Best checkpoint selected per class (lowest FID). Generation will use these. Continue to generate synthetic crops from the best generators.
+              Best checkpoint selected per class (lowest FID). The feasibility test synthesizes its augmentation crops from these. Continue to the feasibility study.
             </div>
           </div>
 

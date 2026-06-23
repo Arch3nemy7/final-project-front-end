@@ -38,7 +38,7 @@ export default function Runs() {
       {db.order.map((id) => {
         const r = db.runs[id], p = r.pipe, st = statusOf(p, C)
         const dc = p.done.filter(Boolean).length
-        const pct = Math.round((dc / 6) * 100) + '%'
+        const pct = Math.round((dc / p.done.length) * 100) + '%'
         return (
           <div key={id} style={{ display: 'grid', gridTemplateColumns: COLS, borderBottom: '1px solid #f2f4f8', alignItems: 'center' }}>
             <div className="gs-row" onClick={() => navigate('/run/' + id)} style={{ padding: '14px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 11 }}>
@@ -52,7 +52,7 @@ export default function Runs() {
               <div style={{ height: 6, borderRadius: 4, background: '#eef1f6', overflow: 'hidden' }}>
                 <div style={{ height: '100%', borderRadius: 4, background: '#2563c9', width: pct }} />
               </div>
-              <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: '#8a94a4', marginTop: 3 }}>{dc} / 6</div>
+              <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: '#8a94a4', marginTop: 3 }}>{dc} / {p.done.length}</div>
             </div>
             <div style={{ padding: '14px 12px' }}>
               <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10.5, fontWeight: 600, padding: '3px 9px', borderRadius: 6, background: st.bg, color: st.fg }}>{st.label}</span>

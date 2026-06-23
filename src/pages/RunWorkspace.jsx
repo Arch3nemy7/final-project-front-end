@@ -7,14 +7,13 @@ import { IconArrowLeft } from '../components/icons.jsx'
 import Stepper from '../components/run/Stepper.jsx'
 import FormatStage from '../components/run/FormatStage.jsx'
 import TrainStage from '../components/run/TrainStage.jsx'
-import GenerateStage from '../components/run/GenerateStage.jsx'
 import FidelityStage from '../components/run/FidelityStage.jsx'
 import FeasibilityStage from '../components/run/FeasibilityStage.jsx'
 import ResultsStage from '../components/run/ResultsStage.jsx'
 
 export default function RunWorkspace() {
   const { id } = useParams()
-  const { db, live, gpu, navigate, clearTimers, setLive, goStage, markStageDone, loadResults, syncRun, reattach, startFormat, startTrain, startGen, startFid, startFeas } = useStore()
+  const { db, live, gpu, navigate, clearTimers, setLive, goStage, markStageDone, loadResults, syncRun, reattach, startFormat, startTrain, startFid, startFeas } = useStore()
 
   // Entering or switching a run resets ephemeral live state, stops any timers
   // from a previously-open run, hydrates persisted results, reconciles stage
@@ -40,11 +39,10 @@ export default function RunWorkspace() {
   // job-state flags
   const fmtRunning = live.fmt === 'running', fmtDone = p.fmtDone && !fmtRunning
   const trainRunning = live.train === 'running', trainDone = p.gnDone && p.gpDone && !trainRunning
-  const genRunning = live.gen === 'running', genDone = p.generated && !genRunning
   const fidRunning = live.fid === 'running', fidDone = p.fidDone && !fidRunning
   const feasRunning = live.feas === 'running', feasDone = p.feasDone && !feasRunning
 
-  const goNext = () => goStage(id, Math.min(5, sg + 1))
+  const goNext = () => goStage(id, Math.min(4, sg + 1))
   const goPrev = () => goStage(id, Math.max(0, sg - 1))
 
   // primary action-bar state machine (ported from the design footer logic)
@@ -59,17 +57,13 @@ export default function RunWorkspace() {
     else { pLabel = 'Start training'; pAct = () => startTrain(id) }
   } else if (sg === 2) {
     if (fidRunning) { pLabel = 'Computing FID…'; pDis = true; hint = 'Scoring every checkpoint' }
-    else if (fidDone) { pLabel = 'Continue to generate →' }
+    else if (fidDone) { pLabel = 'Continue to feasibility →' }
     else { pLabel = 'Run fidelity test'; pAct = () => startFid(id); hint = (p.gnDone && p.gpDone) ? '' : 'Train (or import) models first' }
   } else if (sg === 3) {
-    if (genRunning) { pLabel = 'Generating…'; pDis = true }
-    else if (genDone) { pLabel = 'Continue →' }
-    else { pLabel = 'Generate images'; pAct = () => startGen(id) }
-  } else if (sg === 4) {
     if (feasRunning) { pLabel = 'Training classifiers…'; pDis = true }
-    else if (feasDone) { pLabel = 'View results →'; pAct = () => { markStageDone(id, 5); goNext() } }
+    else if (feasDone) { pLabel = 'View results →'; pAct = () => { markStageDone(id, 4); goNext() } }
     else { pLabel = 'Run feasibility test'; pAct = () => startFeas(id) }
-  } else if (sg === 5) {
+  } else if (sg === 4) {
     pLabel = 'Back to dashboard'; pAct = () => navigate('/')
   }
 
@@ -77,9 +71,8 @@ export default function RunWorkspace() {
     <FormatStage key="0" run={run} C={C} />,
     <TrainStage key="1" run={run} C={C} />,
     <FidelityStage key="2" run={run} C={C} />,
-    <GenerateStage key="3" run={run} C={C} />,
-    <FeasibilityStage key="4" run={run} C={C} />,
-    <ResultsStage key="5" run={run} C={C} />,
+    <FeasibilityStage key="3" run={run} C={C} />,
+    <ResultsStage key="4" run={run} C={C} />,
   ][sg]
 
   return (

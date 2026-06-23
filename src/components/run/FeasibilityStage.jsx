@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useStore } from '../../store/StoreContext.jsx'
 import { resultsOf } from '../../lib/results.js'
 import F1Chart from '../charts/F1Chart.jsx'
@@ -84,10 +85,12 @@ export default function FeasibilityStage({ run, C }) {
   const rows = buildRows(C, R.feasArchs, R.feasRows)
   const fe = p.feasData || { real: '', test: '' }
   const setFe = (k, v) => patchPipe(run.id, { feasData: { ...fe, [k]: v } })
+  // Datasets carry over automatically; the manual paths are an optional override.
+  const [showOverride, setShowOverride] = useState(!!(fe.real || fe.test))
 
   return (
     <div>
-      <Eyebrow>STEP 05 · TEST 2 · FEASIBILITY</Eyebrow>
+      <Eyebrow>STEP 04 · TEST 2 · FEASIBILITY</Eyebrow>
       <H1>Feasibility test — 5 CNNs × 4 scenarios</H1>
       <Lead maxWidth={740}>
         Train five classifiers on four fixed-total compositions and compare macro-F1 on an isolated real test split. Synthetic data is feasible if F1 stays at or above baseline.
@@ -105,19 +108,27 @@ export default function FeasibilityStage({ run, C }) {
       {!feasRunning && !feasDone && (
         <div style={{ background: '#fff', border: '1px solid #e6e9f0', borderRadius: 14, padding: '20px 22px' }}>
           <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 3 }}>Real datasets for the classifier study</div>
-          <div style={{ fontSize: 12, color: '#8a94a4', marginBottom: 16 }}>
-            Each is a folder with <span style={{ fontFamily: "'IBM Plex Mono',monospace" }}>gram_negative/</span> and <span style={{ fontFamily: "'IBM Plex Mono',monospace" }}>gram_positive/</span> subfolders of crops. The synthetic crops are taken from <strong>this run's Generate output</strong>. Leave a field blank to use the server's default dataset.
+          <div style={{ fontSize: 12.5, color: '#5b6677', marginBottom: 14 }}>
+            Uses the datasets from earlier in the pipeline automatically — you don't need to enter them again. Synthetic crops come from the <strong>best checkpoints selected in the Fidelity test</strong>.
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <label style={{ display: 'block' }}>
-              <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: C.ink, marginBottom: 6 }}>Real training crops</span>
-              <input value={fe.real} onChange={(e) => setFe('real', e.target.value)} placeholder="D:\…\real" style={fieldStyle} />
-            </label>
-            <label style={{ display: 'block' }}>
-              <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: C.ink, marginBottom: 6 }}>Isolated real test split</span>
-              <input value={fe.test} onChange={(e) => setFe('test', e.target.value)} placeholder="D:\…\test" style={fieldStyle} />
-            </label>
+          <div onClick={() => setShowOverride((v) => !v)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, color: '#2563c9' }}>
+            <span style={{ fontFamily: "'IBM Plex Mono',monospace" }}>{showOverride ? '▾' : '▸'}</span> Use different train / test splits (optional)
           </div>
+          {showOverride && (
+            <div style={{ marginTop: 14 }}>
+              <div style={{ fontSize: 12, color: '#8a94a4', marginBottom: 12 }}>Each is a folder with <span style={{ fontFamily: "'IBM Plex Mono',monospace" }}>gram_negative/</span> and <span style={{ fontFamily: "'IBM Plex Mono',monospace" }}>gram_positive/</span> subfolders. Leave blank to keep the defaults. The test split must be held out from training.</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <label style={{ display: 'block' }}>
+                  <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: C.ink, marginBottom: 6 }}>Real training crops</span>
+                  <input value={fe.real} onChange={(e) => setFe('real', e.target.value)} placeholder="D:\…\real" style={fieldStyle} />
+                </label>
+                <label style={{ display: 'block' }}>
+                  <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: C.ink, marginBottom: 6 }}>Isolated real test split</span>
+                  <input value={fe.test} onChange={(e) => setFe('test', e.target.value)} placeholder="D:\…\test" style={fieldStyle} />
+                </label>
+              </div>
+            </div>
+          )}
           <div style={{ fontSize: 12.5, color: '#8a94a4', marginTop: 16 }}>
             Click <strong>Run feasibility test</strong> below to train all 5 architectures across the 4 scenarios. The test split must be <strong>held out</strong> from training for the macro-F1 to be meaningful.
           </div>

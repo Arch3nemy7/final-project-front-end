@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  loadDb, saveDb, seedDb, newId, defaultPipe, freshLive,
+  loadDb, saveDb, seedDb, newId, defaultPipe, freshLive, KEY,
 } from './data.js'
 import { LIVE, post, del, get } from '../api/client.js'
 import { openEvents } from '../api/events.js'
@@ -174,7 +174,7 @@ export function StoreProvider({ children }) {
     })
     const goStage = (id, i) => patchPipe(id, { stage: i })
     const maybeAdvance = (id, completed) => {
-      if (autoAdv()) setTimeout(() => goStage(id, Math.min(5, completed + 1)), 900)
+      if (autoAdv()) setTimeout(() => goStage(id, Math.min(4, completed + 1)), 900)
     }
 
     const createRun = () => {
@@ -194,6 +194,16 @@ export function StoreProvider({ children }) {
       if (LIVE) del(`/api/runs/${id}`)
     }
     const setSetting = (k, v) => commit((d) => { d.settings[k] = v; return d })
+    // Reset the SERVER back to the seeded demo template (removes test runs), then
+    // drop local state and reload so the fresh template is re-adopted.
+    const resetTemplate = () => {
+      if (!LIVE) return Promise.reject(new Error('Connect a backend first'))
+      return post('/api/reset-template').then(() => {
+        clearTimers()
+        try { localStorage.removeItem(KEY) } catch { /* ignore */ }
+        window.location.assign('/')
+      })
+    }
     const resetData = () => {
       clearTimers()
       const fresh = seedDb()
@@ -206,7 +216,7 @@ export function StoreProvider({ children }) {
     // ----- jobs (backend-driven; a connected backend is required) -----
     // One handler for every job kind, so both starting a job and re-attaching to
     // an already-running one (after navigating away) share the same logic.
-    const STAGE_IDX = { format: 0, train: 1, fidelity: 2, generate: 3, feasibility: 4 }
+    const STAGE_IDX = { format: 0, train: 1, fidelity: 2, feasibility: 3 }
     const onStageEvent = (id, kind, ev) => {
       if (ev.type === 'result') { patchResults(id, { [ev.key]: ev.value }); return }
       if (ev.type === 'sample') {
@@ -281,8 +291,8 @@ export function StoreProvider({ children }) {
         pos: r && r.pipe.posFile && r.pipe.posFile.name,
         neg: r && r.pipe.negFile && r.pipe.negFile.name,
         res: (r && parseInt(r.pipe.cfg.res, 10)) || 256,
-      }).catch(() => {})
-      liveStream(id, (ev) => onStageEvent(id, 'format', ev))
+      }).then(() => liveStream(id, (ev) => onStageEvent(id, 'format', ev)))
+        .catch(() => updateLive({ fmt: 'idle', fmtPct: 0 }))
     }
     const cancelFormat = () => liveCancel({ fmt: 'idle', fmtPct: 0 })
 
@@ -291,8 +301,9 @@ export function StoreProvider({ children }) {
       const r = dbRef.current.runs[id]
       updateLive({ train: 'running', trainClass: 'gn', kimg: 0, stats: null, augGN: [], augGP: [], sampleGN: null, sampleGP: null, trainSamplesGN: [], trainSamplesGP: [] })
       patchPipe(id, { gnDone: false, gpDone: false })
-      post(`/api/runs/${id}/train/start`, { config: (r && r.pipe.cfg) || {} }).catch(() => {})
-      liveStream(id, (ev) => onStageEvent(id, 'train', ev))
+      post(`/api/runs/${id}/train/start`, { config: (r && r.pipe.cfg) || {} })
+        .then(() => liveStream(id, (ev) => onStageEvent(id, 'train', ev)))
+        .catch(() => updateLive({ train: 'idle' }))
     }
     const cancelTrain = () => liveCancel({ train: 'idle', kimg: 0 })
 
@@ -302,8 +313,8 @@ export function StoreProvider({ children }) {
       const fd = (dbRef.current.runs[id] && dbRef.current.runs[id].pipe.fidData) || {}
       updateLive({ fid: 'running', fidPct: 0, fidStep: 'Starting FID sweep…', fidError: '', fidGN: [], fidGP: [], fidSamplesGN: [], fidSamplesGP: [] })
       post(`/api/runs/${id}/fidelity/start`, { num: parseInt(fd.num, 10) || 5000, gn: fd.gn || null, gp: fd.gp || null })
-        .catch((e) => updateLive({ fid: 'idle', fidError: String(e.message || e) }))
-      liveStream(id, (ev) => onStageEvent(id, 'fidelity', ev))
+        .then(() => liveStream(id, (ev) => onStageEvent(id, 'fidelity', ev)))
+        .catch((e) => updateLive({ fid: 'idle', fidStep: '', fidError: String(e.message || e) }))
     }
     const cancelFid = () => liveCancel({ fid: 'idle', fidPct: 0, fidStep: '' })
 
@@ -311,8 +322,9 @@ export function StoreProvider({ children }) {
       if (!LIVE) return
       const r = dbRef.current.runs[id]
       updateLive({ gen: 'running', genPct: 0, genPhase: 'Gram-positive' })
-      post(`/api/runs/${id}/generate/start`, { n: (r && parseInt(r.pipe.genN, 10)) || 5000 }).catch(() => {})
-      liveStream(id, (ev) => onStageEvent(id, 'generate', ev))
+      post(`/api/runs/${id}/generate/start`, { n: (r && parseInt(r.pipe.genN, 10)) || 5000 })
+        .then(() => liveStream(id, (ev) => onStageEvent(id, 'generate', ev)))
+        .catch(() => updateLive({ gen: 'idle', genPct: 0, genPhase: '' }))
     }
     const cancelGen = () => liveCancel({ gen: 'idle', genPct: 0, genPhase: '' })
 
@@ -321,8 +333,8 @@ export function StoreProvider({ children }) {
       const fe = (dbRef.current.runs[id] && dbRef.current.runs[id].pipe.feasData) || {}
       updateLive({ feas: 'running', feasPct: 0, feasStep: 'Starting feasibility study…', feasError: '' })
       post(`/api/runs/${id}/feasibility/start`, { real: fe.real || null, test: fe.test || null })
-        .catch((e) => updateLive({ feas: 'idle', feasError: String(e.message || e) }))
-      liveStream(id, (ev) => onStageEvent(id, 'feasibility', ev))
+        .then(() => liveStream(id, (ev) => onStageEvent(id, 'feasibility', ev)))
+        .catch((e) => updateLive({ feas: 'idle', feasStep: '', feasError: String(e.message || e) }))
     }
     const cancelFeas = () => liveCancel({ feas: 'idle', feasPct: 0, feasStep: '' })
 
@@ -348,7 +360,7 @@ export function StoreProvider({ children }) {
       setLive: updateLive,
       clearTimers,
       patchPipe, setCfg, markStageDone, goStage, loadResults, syncRun, adoptServerRuns, importModels, reattach,
-      createRun, deleteRun, setSetting, resetData,
+      createRun, deleteRun, setSetting, resetData, resetTemplate,
       startFormat, cancelFormat,
       startTrain, cancelTrain,
       startGen, cancelGen,
